@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <!-- Email address display -->
+    <div class="col-12 mb-4">
+        <div class="alert alert-info d-flex align-items-center">
+            <i class="fas fa-info-circle me-2"></i>
+            <div>
+                Your temporary email address: <strong>{{ config['MAIL_TM_EMAIL'] }}</strong>
+                <button class="btn btn-sm btn-outline-primary ms-2" onclick="copyEmail()">
+                    <i class="fas fa-copy"></i> Copy
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Email list -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Inbox</h5>
+                <button class="btn btn-sm btn-primary" onclick="refreshMessages()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+            <div class="list-group list-group-flush" id="message-list">
+                {% if messages %}
+                    {% for message in messages %}
+                        <a href="#" class="list-group-item list-group-item-action" onclick="viewMessage('{{ message.id }}')">
+                            <div class="d-flex justify-content-between">
+                                <h6 class="mb-1">{{ message.subject or '(No subject)' }}</h6>
+                                <small>{{ message.date }}</small>
+                            </div>
+                            <p class="mb-1"><small>From: {{ message.from }}</small></p>
+                            <small class="text-muted">{{ message.intro }}</small>
+                        </a>
+                    {% endfor %}
+                {% else %}
+                    <div class="list-group-item text-center text-muted">
+                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                        <p>No messages yet</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Message viewer -->
+    <div class="col-md-8">
+        <div class="card" id="message-viewer">
+            <div class="card-body text-center text-muted">
+                <i class="fas fa-envelope-open fa-3x mb-3"></i>
+                <h5>Select a message to view its contents</h5>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Add highlight.js dependencies -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
+<style>
+    .message-content pre {
+        max-height: 600px;
+        overflow: auto;
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 4px;
+    }
+    .message-content code {
+        white-space: pre;
+    }
+</style>
+<script>
+function copyEmail() {
+    navigator.clipboard.writeText('{{ config["MAIL_TM_EMAIL"] }}');
+    alert('Email address copied to clipboard!');
+}
+
+function refreshMessages() {
+    $.get('/refresh', function(messages) {
+        let messageList = $('#message-list');
+        messageList.empty();
+        
+        if (messages.length === 0) {
+            messageList.html(`
+                <div class="list-group-item text-center text-muted">
+                    <i class="fas fa-inbox fa-2x mb-2"></i>
+                    <p>No messages yet</p>
+                </div>
+            `);
+            return;
+        }
+
+        messages.forEach(message => {
+            messageList.append(`
+                <a href="#" class="list-group-item list-group-item-action" onclick="viewMessage('${message.id}')">
+                    <div class="d-flex justify-content-between">
+                        <h6 class="mb-1">${message.subject || '(No subject)'}</h6>
+                        <small>${message.date}</small>
+                    </div>
+                    <p class="mb-1"><small>From: ${message.from}</small></p>
+                    <small class="text-muted">${message.intro}</small>
+                </a>
+            `);
+        });
+    });
+}
+
+function formatXMLContent(content) {
+    // Ensure content is a string
+    if (content === null || content === undefined) {
+        return '(No content)';
+    }
+    
+    // Convert to string if it's not already
+    const contentStr = String(content);
+    
+    // Debug log
+    console.log('Content type:', typeof contentStr);
+    console.log('Content starts with:', contentStr.substring(0, 100));
+    
+    // Check if content looks like XML (more flexible detection)
+    if (contentStr.includes('<?xml') || contentStr.includes('<adf')) {
+        try {
+            // Create a temporary DOM parser
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(contentStr, 'text/xml');
+            
+            // Check for parsing errors
+            const parserError = xmlDoc.querySelector('parsererror');
+            if (parserError) {
+                console.error('XML parsing error:', parserError.textContent);
+                return `<pre><code class="language-xml">${contentStr}</code></pre>`;
+            }
+            
+            // Format the XML with proper indentation
+            const serializer = new XMLSerializer();
+            let formattedXML = serializer.serializeToString(xmlDoc)
+                .replace(/></g, '>\n<')     // Add newline between tags
+                .replace(/(<\/?[^>]+>)/g, '$1\n')  // Add newline after tags
+                .replace(/^\s*[\r\n]/gm, '');      // Remove empty lines
+                
+            // Add proper indentation
+            const lines = formattedXML.split('\n');
+            let indent = 0;
+            formattedXML = lines.map(line => {
+                if (line.match(/<\//)) {
+                    indent--;
+                }
+                const spacing = '  '.repeat(Math.max(0, indent));
+                if (line.match(/<[^/].*>/)) {
+                    indent++;
+                }
+                return spacing + line;
+            }).join('\n');
+            
+            console.log('Formatted XML:', formattedXML);  // Debug log
+            
+            // Return formatted XML wrapped in pre and code tags
+            return `<pre><code class="language-xml">${formattedXML}</code></pre>`;
+        } catch (e) {
+            console.error('XML parsing failed:', e);
+            return `<pre><code class="language-xml">${contentStr}</code></pre>`;
+        }
+    }
+    return contentStr;
+}
+
+function viewMessage(messageId) {
+    $.get(`/message/${messageId}`, function(message) {
+        console.log('Received message:', message);  // Debug log
+        
+        let messageContent = '';
+        
+        // Try to get the content from different possible message formats
+        if (message.html) {
+            messageContent = message.html;
+        } else if (message.text) {
+            messageContent = message.text;
+        } else if (message.content) {
+            messageContent = message.content;
+        } else {
+            messageContent = '(No content)';
+        }
+        
+        console.log('Message content before formatting:', messageContent);  // Debug log
+        
+        const formattedContent = formatXMLContent(messageContent);
+        console.log('Formatted content:', formattedContent);  // Debug log
+        
+        $('#message-viewer').html(`
+            <div class="card-header">
+                <h5 class="mb-0">${message.subject || '(No subject)'}</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>From:</strong> ${message.from ? (message.from.address || message.from) : 'Unknown'}<br>
+                    <strong>Date:</strong> ${new Date(message.createdAt).toLocaleString()}<br>
+                </div>
+                <div class="message-content">
+                    ${formattedContent}
+                </div>
+            </div>
+        `);
+        
+        // Initialize syntax highlighting
+        document.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightElement(block);
+        });
+    }).fail(function(error) {
+        console.error('Error fetching message:', error);
+        $('#message-viewer').html(`
+            <div class="card-body">
+                <div class="alert alert-danger">
+                    Error loading message. Please try again.
+                </div>
+            </div>
+        `);
+    });
+}
+
+// Auto-refresh messages every 30 seconds
+setInterval(refreshMessages, 30000);
+</script>
+{% endblock %} 
