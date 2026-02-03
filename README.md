@@ -2,8 +2,6 @@
 
 A sleek and modern web application that allows you to interact with your Mail.tm temporary email account. This Flask-based application provides a clean interface to view and manage your temporary emails.
 
-![Mail.tm Web Client](static/screenshot.png)
-
 ## 🚀 Features
 
 - **Real-time Email Viewing**: Access your Mail.tm emails through a clean web interface
