@@ -1,230 +1,299 @@
 {% extends "base.html" %}
 
-{% block content %}
-<div class="row">
-    <!-- Email address display -->
-    <div class="col-12 mb-4">
-        <div class="alert alert-info d-flex align-items-center">
-            <i class="fas fa-info-circle me-2"></i>
-            <div>
-                Your temporary email address: <strong>{{ config['MAIL_TM_EMAIL'] }}</strong>
-                <button class="btn btn-sm btn-outline-primary ms-2" onclick="copyEmail()">
-                    <i class="fas fa-copy"></i> Copy
-                </button>
-            </div>
-        </div>
-    </div>
+{% block head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+{% endblock %}
 
-    <!-- Email list -->
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Inbox</h5>
-                <button class="btn btn-sm btn-primary" onclick="refreshMessages()">
-                    <i class="fas fa-sync-alt"></i> Refresh
-                </button>
-            </div>
-            <div class="list-group list-group-flush" id="message-list">
-                {% if messages %}
-                    {% for message in messages %}
-                        <a href="#" class="list-group-item list-group-item-action" onclick="viewMessage('{{ message.id }}')">
-                            <div class="d-flex justify-content-between">
-                                <h6 class="mb-1">{{ message.subject or '(No subject)' }}</h6>
-                                <small>{{ message.date }}</small>
-                            </div>
-                            <p class="mb-1"><small>From: {{ message.from }}</small></p>
-                            <small class="text-muted">{{ message.intro }}</small>
-                        </a>
-                    {% endfor %}
-                {% else %}
-                    <div class="list-group-item text-center text-muted">
-                        <i class="fas fa-inbox fa-2x mb-2"></i>
-                        <p>No messages yet</p>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
+{% block topbar %}
+<div class="email-address-bar">
+    <div class="email-badge" id="email-badge" title="Click to copy">
+        <i class="fas fa-at"></i>
+        <span id="email-text">{{ config['MAIL_TM_EMAIL'] }}</span>
+        <button class="btn-copy" onclick="copyEmail(event)">
+            <i class="fas fa-copy" id="copy-icon"></i>
+        </button>
     </div>
-
-    <!-- Message viewer -->
-    <div class="col-md-8">
-        <div class="card" id="message-viewer">
-            <div class="card-body text-center text-muted">
-                <i class="fas fa-envelope-open fa-3x mb-3"></i>
-                <h5>Select a message to view its contents</h5>
-            </div>
+    <div class="topbar-actions">
+        <div class="auto-refresh-indicator" id="refresh-indicator" title="Auto-refresh active">
+            <span class="pulse-dot"></span>
+            <span class="d-none d-sm-inline">Live</span>
         </div>
     </div>
 </div>
 {% endblock %}
 
+{% block content %}
+<div class="inbox-layout">
+    <!-- Message list panel -->
+    <div class="message-list-panel" id="message-list-panel">
+        <div class="panel-header">
+            <h2 class="panel-title">
+                Inbox
+                <span class="message-count" id="message-count">{{ messages|length if messages else 0 }}</span>
+            </h2>
+            <button class="btn-icon" onclick="refreshMessages()" id="refresh-btn" title="Refresh">
+                <i class="fas fa-arrow-rotate-right"></i>
+            </button>
+        </div>
+        <div class="message-list" id="message-list">
+            {% if messages %}
+                {% for message in messages %}
+                <div class="message-item {% if not message.seen %}unread{% endif %}"
+                     data-id="{{ message.id }}"
+                     onclick="viewMessage('{{ message.id }}', this)">
+                    <div class="message-item-indicator"></div>
+                    <div class="message-item-content">
+                        <div class="message-item-header">
+                            <span class="message-sender">{{ message.from }}</span>
+                            <span class="message-date">{{ message.date }}</span>
+                        </div>
+                        <div class="message-subject">{{ message.subject or '(No subject)' }}</div>
+                        <div class="message-preview">{{ message.intro }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state" id="empty-state">
+                    <div class="empty-state-icon">
+                        <i class="fas fa-inbox"></i>
+                    </div>
+                    <h3>No messages yet</h3>
+                    <p>New emails will appear here automatically</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Message viewer panel -->
+    <div class="message-viewer-panel" id="message-viewer-panel">
+        <div id="message-viewer">
+            <div class="viewer-placeholder">
+                <div class="placeholder-icon">
+                    <i class="fas fa-envelope-open-text"></i>
+                </div>
+                <h3>Select a message</h3>
+                <p>Choose an email from the inbox to read it here</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Mobile back button (shown when viewing message on mobile) -->
+<button class="btn-back d-lg-none" id="btn-back" onclick="goBackToList()">
+    <i class="fas fa-arrow-left"></i>
+</button>
+{% endblock %}
+
 {% block scripts %}
-<!-- Add highlight.js dependencies -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
-<style>
-    .message-content pre {
-        max-height: 600px;
-        overflow: auto;
-        background: #f8f9fa;
-        padding: 1rem;
-        border-radius: 4px;
-    }
-    .message-content code {
-        white-space: pre;
-    }
-</style>
 <script>
-function copyEmail() {
-    navigator.clipboard.writeText('{{ config["MAIL_TM_EMAIL"] }}');
-    alert('Email address copied to clipboard!');
-}
+let currentMessageId = null;
+let refreshInterval = null;
 
-function refreshMessages() {
-    $.get('/refresh', function(messages) {
-        let messageList = $('#message-list');
-        messageList.empty();
-        
-        if (messages.length === 0) {
-            messageList.html(`
-                <div class="list-group-item text-center text-muted">
-                    <i class="fas fa-inbox fa-2x mb-2"></i>
-                    <p>No messages yet</p>
-                </div>
-            `);
-            return;
-        }
-
-        messages.forEach(message => {
-            messageList.append(`
-                <a href="#" class="list-group-item list-group-item-action" onclick="viewMessage('${message.id}')">
-                    <div class="d-flex justify-content-between">
-                        <h6 class="mb-1">${message.subject || '(No subject)'}</h6>
-                        <small>${message.date}</small>
-                    </div>
-                    <p class="mb-1"><small>From: ${message.from}</small></p>
-                    <small class="text-muted">${message.intro}</small>
-                </a>
-            `);
-        });
+function copyEmail(e) {
+    e.stopPropagation();
+    navigator.clipboard.writeText('{{ config["MAIL_TM_EMAIL"] }}').then(() => {
+        showToast('Email address copied!', 'success');
+        const icon = document.getElementById('copy-icon');
+        icon.className = 'fas fa-check';
+        setTimeout(() => { icon.className = 'fas fa-copy'; }, 1500);
     });
 }
 
+function refreshMessages() {
+    const btn = document.getElementById('refresh-btn');
+    btn.classList.add('spinning');
+
+    $.get('/refresh', function(messages) {
+        const messageList = document.getElementById('message-list');
+        const count = document.getElementById('message-count');
+        count.textContent = messages.length;
+
+        if (messages.length === 0) {
+            messageList.innerHTML = `
+                <div class="empty-state" id="empty-state">
+                    <div class="empty-state-icon">
+                        <i class="fas fa-inbox"></i>
+                    </div>
+                    <h3>No messages yet</h3>
+                    <p>New emails will appear here automatically</p>
+                </div>
+            `;
+            return;
+        }
+
+        messageList.innerHTML = messages.map(message => `
+            <div class="message-item ${!message.seen ? 'unread' : ''} ${message.id === currentMessageId ? 'active' : ''}"
+                 data-id="${message.id}"
+                 onclick="viewMessage('${message.id}', this)">
+                <div class="message-item-indicator"></div>
+                <div class="message-item-content">
+                    <div class="message-item-header">
+                        <span class="message-sender">${escapeHtml(message.from)}</span>
+                        <span class="message-date">${message.date}</span>
+                    </div>
+                    <div class="message-subject">${escapeHtml(message.subject || '(No subject)')}</div>
+                    <div class="message-preview">${escapeHtml(message.intro)}</div>
+                </div>
+            </div>
+        `).join('');
+    }).always(function() {
+        btn.classList.remove('spinning');
+    });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 function formatXMLContent(content) {
-    // Ensure content is a string
-    if (content === null || content === undefined) {
-        return '(No content)';
-    }
-    
-    // Convert to string if it's not already
+    if (content === null || content === undefined) return '(No content)';
     const contentStr = String(content);
-    
-    // Debug log
-    console.log('Content type:', typeof contentStr);
-    console.log('Content starts with:', contentStr.substring(0, 100));
-    
-    // Check if content looks like XML (more flexible detection)
+
     if (contentStr.includes('<?xml') || contentStr.includes('<adf')) {
         try {
-            // Create a temporary DOM parser
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(contentStr, 'text/xml');
-            
-            // Check for parsing errors
-            const parserError = xmlDoc.querySelector('parsererror');
-            if (parserError) {
-                console.error('XML parsing error:', parserError.textContent);
-                return `<pre><code class="language-xml">${contentStr}</code></pre>`;
+            if (xmlDoc.querySelector('parsererror')) {
+                return `<pre><code class="language-xml">${escapeHtml(contentStr)}</code></pre>`;
             }
-            
-            // Format the XML with proper indentation
             const serializer = new XMLSerializer();
             let formattedXML = serializer.serializeToString(xmlDoc)
-                .replace(/></g, '>\n<')     // Add newline between tags
-                .replace(/(<\/?[^>]+>)/g, '$1\n')  // Add newline after tags
-                .replace(/^\s*[\r\n]/gm, '');      // Remove empty lines
-                
-            // Add proper indentation
+                .replace(/></g, '>\n<')
+                .replace(/(<\/?[^>]+>)/g, '$1\n')
+                .replace(/^\s*[\r\n]/gm, '');
+
             const lines = formattedXML.split('\n');
             let indent = 0;
             formattedXML = lines.map(line => {
-                if (line.match(/<\//)) {
-                    indent--;
-                }
+                if (line.match(/<\//)) indent--;
                 const spacing = '  '.repeat(Math.max(0, indent));
-                if (line.match(/<[^/].*>/)) {
-                    indent++;
-                }
+                if (line.match(/<[^/].*>/)) indent++;
                 return spacing + line;
             }).join('\n');
-            
-            console.log('Formatted XML:', formattedXML);  // Debug log
-            
-            // Return formatted XML wrapped in pre and code tags
-            return `<pre><code class="language-xml">${formattedXML}</code></pre>`;
+
+            return `<pre><code class="language-xml">${escapeHtml(formattedXML)}</code></pre>`;
         } catch (e) {
-            console.error('XML parsing failed:', e);
-            return `<pre><code class="language-xml">${contentStr}</code></pre>`;
+            return `<pre><code class="language-xml">${escapeHtml(contentStr)}</code></pre>`;
         }
     }
     return contentStr;
 }
 
-function viewMessage(messageId) {
+function viewMessage(messageId, element) {
+    currentMessageId = messageId;
+
+    // Update active state
+    document.querySelectorAll('.message-item').forEach(el => el.classList.remove('active'));
+    if (element) element.classList.add('active');
+
+    // Show loading state
+    const viewer = document.getElementById('message-viewer');
+    viewer.innerHTML = `
+        <div class="viewer-loading">
+            <div class="loading-spinner"></div>
+            <p>Loading message...</p>
+        </div>
+    `;
+
+    // Mobile: show viewer panel
+    document.getElementById('message-viewer-panel').classList.add('mobile-active');
+    document.getElementById('btn-back').classList.add('visible');
+
+    // Mark as read
+    $.post(`/message/${messageId}/read`);
+    if (element) element.classList.remove('unread');
+
     $.get(`/message/${messageId}`, function(message) {
-        console.log('Received message:', message);  // Debug log
-        
         let messageContent = '';
-        
-        // Try to get the content from different possible message formats
         if (message.html) {
             messageContent = message.html;
         } else if (message.text) {
-            messageContent = message.text;
+            messageContent = `<pre class="text-content">${escapeHtml(message.text)}</pre>`;
         } else if (message.content) {
             messageContent = message.content;
         } else {
-            messageContent = '(No content)';
+            messageContent = '<p class="text-muted">No content available</p>';
         }
-        
-        console.log('Message content before formatting:', messageContent);  // Debug log
-        
+
         const formattedContent = formatXMLContent(messageContent);
-        console.log('Formatted content:', formattedContent);  // Debug log
-        
-        $('#message-viewer').html(`
-            <div class="card-header">
-                <h5 class="mb-0">${message.subject || '(No subject)'}</h5>
-            </div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <strong>From:</strong> ${message.from ? (message.from.address || message.from) : 'Unknown'}<br>
-                    <strong>Date:</strong> ${new Date(message.createdAt).toLocaleString()}<br>
-                </div>
-                <div class="message-content">
-                    ${formattedContent}
-                </div>
-            </div>
-        `);
-        
-        // Initialize syntax highlighting
-        document.querySelectorAll('pre code').forEach((block) => {
-            hljs.highlightElement(block);
+        const fromDisplay = message.from ? (message.from.address || message.from) : 'Unknown';
+        const fromName = message.from && message.from.name ? message.from.name : fromDisplay;
+        const dateStr = new Date(message.createdAt).toLocaleString(undefined, {
+            weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+            hour: '2-digit', minute: '2-digit'
         });
-    }).fail(function(error) {
-        console.error('Error fetching message:', error);
-        $('#message-viewer').html(`
-            <div class="card-body">
-                <div class="alert alert-danger">
-                    Error loading message. Please try again.
+
+        viewer.innerHTML = `
+            <div class="viewer-header">
+                <div class="viewer-subject">${escapeHtml(message.subject || '(No subject)')}</div>
+                <div class="viewer-meta">
+                    <div class="viewer-avatar">${fromName.charAt(0).toUpperCase()}</div>
+                    <div class="viewer-meta-text">
+                        <div class="viewer-from">${escapeHtml(fromName)}</div>
+                        <div class="viewer-from-email">${escapeHtml(fromDisplay)}</div>
+                    </div>
+                    <div class="viewer-date">${dateStr}</div>
+                </div>
+                <div class="viewer-actions">
+                    <button class="btn-icon btn-icon-sm" onclick="deleteMessage('${messageId}')" title="Delete">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
                 </div>
             </div>
-        `);
+            <div class="viewer-body">
+                <div class="message-content">${formattedContent}</div>
+            </div>
+        `;
+
+        document.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+    }).fail(function() {
+        viewer.innerHTML = `
+            <div class="viewer-error">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>Failed to load message. Please try again.</p>
+                <button class="btn btn-sm btn-primary" onclick="viewMessage('${messageId}')">Retry</button>
+            </div>
+        `;
     });
 }
 
-// Auto-refresh messages every 30 seconds
-setInterval(refreshMessages, 30000);
+function deleteMessage(messageId) {
+    if (!confirm('Delete this message?')) return;
+
+    $.ajax({
+        url: `/message/${messageId}`,
+        type: 'DELETE',
+        success: function() {
+            showToast('Message deleted', 'success');
+            currentMessageId = null;
+            document.getElementById('message-viewer').innerHTML = `
+                <div class="viewer-placeholder">
+                    <div class="placeholder-icon">
+                        <i class="fas fa-envelope-open-text"></i>
+                    </div>
+                    <h3>Select a message</h3>
+                    <p>Choose an email from the inbox to read it here</p>
+                </div>
+            `;
+            refreshMessages();
+            goBackToList();
+        },
+        error: function() {
+            showToast('Failed to delete message', 'error');
+        }
+    });
+}
+
+function goBackToList() {
+    document.getElementById('message-viewer-panel').classList.remove('mobile-active');
+    document.getElementById('btn-back').classList.remove('visible');
+}
+
+// Auto-refresh
+refreshInterval = setInterval(refreshMessages, 30000);
 </script>
-{% endblock %} 
+{% endblock %}
