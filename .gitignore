@@ -1,2 +1,8 @@
 .env
 __pycache__/
+venv/
+
+# Claude Code local files
+.claude/settings.local.json
+.claude/keybindings.json
+.claude/agent-memory-local/

@@ -17,15 +17,25 @@ A Flask web application for interacting with Mail.tm temporary email accounts. P
 mail.tm/
 ├── app.py                    # Main Flask app — MailTM class + routes
 ├── fetch_mailtm_emails.py    # Standalone email fetch utility (for testing)
-├── requirements.txt          # Python dependencies (flask, requests, python-dotenv, flask-cors)
+├── requirements.txt          # Python dependencies
 ├── .env.example              # Environment variable template
+├── .claude/
+│   ├── settings.json         # Project-level Claude Code config
+│   ├── rules/                # Modular convention files (auto-loaded)
+│   │   ├── flask-conventions.md
+│   │   ├── frontend.md
+│   │   ├── security.md
+│   │   └── api-patterns.md
+│   └── skills/
+│       └── run/SKILL.md      # /run — start the dev server
 ├── templates/
-│   ├── base.html             # Base template (navbar, Bootstrap/jQuery CDN imports)
-│   ├── index.html            # Inbox + message viewer (extends base.html)
+│   ├── base.html             # Base template (navbar, CDN imports)
+│   ├── index.html            # Inbox + message viewer
+│   ├── login.html            # Login / registration page
 │   └── error.html            # Error display page
 └── static/
     └── css/
-        └── style.css         # Custom styles (gradients, responsive, animations)
+        └── style.css         # Custom styles
 ```
 
 ## Setup & Running
@@ -44,25 +54,6 @@ python app.py         # starts on http://localhost:8000
 - `MAIL_TM_PASSWORD` — Mail.tm password
 - `FLASK_SECRET_KEY` — Flask session secret
 
-## Key Code Patterns
-
-### Backend (app.py)
-
-- **`MailTM` class** — wraps API auth and message fetching; single instance created at module level
-- **Routes:**
-  - `GET /` — renders inbox (template with message list)
-  - `GET /message/<message_id>` — returns message content as JSON (AJAX endpoint)
-  - `GET /refresh` — returns refreshed message list as JSON (AJAX endpoint)
-- Error handling uses try/except with `error.html` template fallback
-- CORS enabled via flask-cors
-
-### Frontend (templates/ + static/)
-
-- Jinja2 templating with `base.html` block inheritance
-- jQuery AJAX for message loading and 30-second auto-refresh
-- Inline `onclick` handlers for message selection and clipboard copy
-- Highlight.js for XML/HTML content rendering in emails
-
 ## Development Notes
 
 - **No test suite** — no tests, pytest, or test config exist yet
@@ -73,7 +64,9 @@ python app.py         # starts on http://localhost:8000
 
 ## Conventions
 
-- Keep the app as a single `app.py` file unless complexity requires splitting
-- Frontend dependencies are loaded via CDN (no npm/bundler)
-- Use `.env` for secrets; never commit `.env` (it's gitignored)
-- Flask routes return rendered templates for page loads, JSON for AJAX endpoints
+Detailed conventions are in `.claude/rules/`. Key points:
+
+- Keep the app as a single `app.py` unless complexity requires splitting
+- Frontend deps via CDN (no npm/bundler)
+- Use `.env` for secrets; never commit `.env`
+- Flask routes return templates for pages, JSON for AJAX
