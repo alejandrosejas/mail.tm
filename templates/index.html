@@ -1,14 +1,10 @@
 {% extends "base.html" %}
 
-{% block head %}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
-{% endblock %}
-
 {% block topbar %}
 <div class="email-address-bar">
     <div class="email-badge" id="email-badge" title="Click to copy">
         <i class="fas fa-at"></i>
-        <span id="email-text">{{ config['MAIL_TM_EMAIL'] }}</span>
+        <span id="email-text">{{ email }}</span>
         <button class="btn-copy" onclick="copyEmail(event)">
             <i class="fas fa-copy" id="copy-icon"></i>
         </button>
@@ -18,6 +14,9 @@
             <span class="pulse-dot"></span>
             <span class="d-none d-sm-inline">Live</span>
         </div>
+        <button class="btn-icon" onclick="logout()" title="Sign out">
+            <i class="fas fa-right-from-bracket"></i>
+        </button>
     </div>
 </div>
 {% endblock %}
@@ -78,10 +77,14 @@
     </div>
 </div>
 
-<!-- Mobile back button (shown when viewing message on mobile) -->
+<!-- Mobile back button -->
 <button class="btn-back d-lg-none" id="btn-back" onclick="goBackToList()">
     <i class="fas fa-arrow-left"></i>
 </button>
+{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
 {% endblock %}
 
 {% block scripts %}
@@ -89,15 +92,20 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
 <script>
 let currentMessageId = null;
-let refreshInterval = null;
 
 function copyEmail(e) {
     e.stopPropagation();
-    navigator.clipboard.writeText('{{ config["MAIL_TM_EMAIL"] }}').then(() => {
+    navigator.clipboard.writeText('{{ email }}').then(() => {
         showToast('Email address copied!', 'success');
         const icon = document.getElementById('copy-icon');
         icon.className = 'fas fa-check';
         setTimeout(() => { icon.className = 'fas fa-copy'; }, 1500);
+    });
+}
+
+function logout() {
+    $.post('/auth/logout', function() {
+        window.location.href = '/login';
     });
 }
 
@@ -113,13 +121,10 @@ function refreshMessages() {
         if (messages.length === 0) {
             messageList.innerHTML = `
                 <div class="empty-state" id="empty-state">
-                    <div class="empty-state-icon">
-                        <i class="fas fa-inbox"></i>
-                    </div>
+                    <div class="empty-state-icon"><i class="fas fa-inbox"></i></div>
                     <h3>No messages yet</h3>
                     <p>New emails will appear here automatically</p>
-                </div>
-            `;
+                </div>`;
             return;
         }
 
@@ -138,6 +143,8 @@ function refreshMessages() {
                 </div>
             </div>
         `).join('');
+    }).fail(function(xhr) {
+        if (xhr.status === 401) window.location.href = '/login';
     }).always(function() {
         btn.classList.remove('spinning');
     });
@@ -152,20 +159,15 @@ function escapeHtml(text) {
 function formatXMLContent(content) {
     if (content === null || content === undefined) return '(No content)';
     const contentStr = String(content);
-
     if (contentStr.includes('<?xml') || contentStr.includes('<adf')) {
         try {
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(contentStr, 'text/xml');
-            if (xmlDoc.querySelector('parsererror')) {
+            if (xmlDoc.querySelector('parsererror'))
                 return `<pre><code class="language-xml">${escapeHtml(contentStr)}</code></pre>`;
-            }
             const serializer = new XMLSerializer();
             let formattedXML = serializer.serializeToString(xmlDoc)
-                .replace(/></g, '>\n<')
-                .replace(/(<\/?[^>]+>)/g, '$1\n')
-                .replace(/^\s*[\r\n]/gm, '');
-
+                .replace(/></g, '>\n<').replace(/(<\/?[^>]+>)/g, '$1\n').replace(/^\s*[\r\n]/gm, '');
             const lines = formattedXML.split('\n');
             let indent = 0;
             formattedXML = lines.map(line => {
@@ -174,7 +176,6 @@ function formatXMLContent(content) {
                 if (line.match(/<[^/].*>/)) indent++;
                 return spacing + line;
             }).join('\n');
-
             return `<pre><code class="language-xml">${escapeHtml(formattedXML)}</code></pre>`;
         } catch (e) {
             return `<pre><code class="language-xml">${escapeHtml(contentStr)}</code></pre>`;
@@ -185,39 +186,24 @@ function formatXMLContent(content) {
 
 function viewMessage(messageId, element) {
     currentMessageId = messageId;
-
-    // Update active state
     document.querySelectorAll('.message-item').forEach(el => el.classList.remove('active'));
     if (element) element.classList.add('active');
 
-    // Show loading state
     const viewer = document.getElementById('message-viewer');
-    viewer.innerHTML = `
-        <div class="viewer-loading">
-            <div class="loading-spinner"></div>
-            <p>Loading message...</p>
-        </div>
-    `;
+    viewer.innerHTML = `<div class="viewer-loading"><div class="loading-spinner"></div><p>Loading message...</p></div>`;
 
-    // Mobile: show viewer panel
     document.getElementById('message-viewer-panel').classList.add('mobile-active');
     document.getElementById('btn-back').classList.add('visible');
 
-    // Mark as read
     $.post(`/message/${messageId}/read`);
     if (element) element.classList.remove('unread');
 
     $.get(`/message/${messageId}`, function(message) {
         let messageContent = '';
-        if (message.html) {
-            messageContent = message.html;
-        } else if (message.text) {
-            messageContent = `<pre class="text-content">${escapeHtml(message.text)}</pre>`;
-        } else if (message.content) {
-            messageContent = message.content;
-        } else {
-            messageContent = '<p class="text-muted">No content available</p>';
-        }
+        if (message.html) messageContent = message.html;
+        else if (message.text) messageContent = `<pre class="text-content">${escapeHtml(message.text)}</pre>`;
+        else if (message.content) messageContent = message.content;
+        else messageContent = '<p class="text-muted">No content available</p>';
 
         const formattedContent = formatXMLContent(messageContent);
         const fromDisplay = message.from ? (message.from.address || message.from) : 'Unknown';
@@ -246,9 +232,7 @@ function viewMessage(messageId, element) {
             </div>
             <div class="viewer-body">
                 <div class="message-content">${formattedContent}</div>
-            </div>
-        `;
-
+            </div>`;
         document.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
     }).fail(function() {
         viewer.innerHTML = `
@@ -256,35 +240,27 @@ function viewMessage(messageId, element) {
                 <i class="fas fa-exclamation-triangle"></i>
                 <p>Failed to load message. Please try again.</p>
                 <button class="btn btn-sm btn-primary" onclick="viewMessage('${messageId}')">Retry</button>
-            </div>
-        `;
+            </div>`;
     });
 }
 
 function deleteMessage(messageId) {
     if (!confirm('Delete this message?')) return;
-
     $.ajax({
-        url: `/message/${messageId}`,
-        type: 'DELETE',
+        url: `/message/${messageId}`, type: 'DELETE',
         success: function() {
             showToast('Message deleted', 'success');
             currentMessageId = null;
             document.getElementById('message-viewer').innerHTML = `
                 <div class="viewer-placeholder">
-                    <div class="placeholder-icon">
-                        <i class="fas fa-envelope-open-text"></i>
-                    </div>
+                    <div class="placeholder-icon"><i class="fas fa-envelope-open-text"></i></div>
                     <h3>Select a message</h3>
                     <p>Choose an email from the inbox to read it here</p>
-                </div>
-            `;
+                </div>`;
             refreshMessages();
             goBackToList();
         },
-        error: function() {
-            showToast('Failed to delete message', 'error');
-        }
+        error: function() { showToast('Failed to delete message', 'error'); }
     });
 }
 
@@ -293,7 +269,6 @@ function goBackToList() {
     document.getElementById('btn-back').classList.remove('visible');
 }
 
-// Auto-refresh
-refreshInterval = setInterval(refreshMessages, 30000);
+setInterval(refreshMessages, 30000);
 </script>
 {% endblock %}

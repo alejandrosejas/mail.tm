@@ -1,4 +1,3 @@
-from app import create_app, MailTM
+from app import create_app
 
-mail_client = MailTM()
-app = create_app(mail_client)
+app = create_app()

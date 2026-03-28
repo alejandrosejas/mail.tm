@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block body %}
+<div class="login-page">
+    <div class="login-card">
+        <div class="login-brand">
+            <div class="brand-icon brand-icon-lg">
+                <i class="fas fa-paper-plane"></i>
+            </div>
+            <h1>Mail.tm</h1>
+            <p>Instant disposable email</p>
+        </div>
+
+        <!-- Tab switcher -->
+        <div class="login-tabs">
+            <button class="login-tab active" data-tab="create" onclick="switchTab('create')">Create New</button>
+            <button class="login-tab" data-tab="login" onclick="switchTab('login')">Sign In</button>
+        </div>
+
+        <!-- Create account form -->
+        <form id="create-form" class="login-form" onsubmit="return handleCreate(event)">
+            <div class="input-group-custom">
+                <div class="input-row">
+                    <input type="text" id="create-username" placeholder="username" autocomplete="off" required>
+                    <span class="input-at">@</span>
+                    <select id="create-domain">
+                        <option value="">Loading...</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block" id="create-btn">
+                <span class="btn-text">Create Inbox</span>
+                <span class="btn-spinner" style="display:none"><i class="fas fa-circle-notch fa-spin"></i></span>
+            </button>
+            <p class="login-hint">A random password will be generated for you</p>
+        </form>
+
+        <!-- Login form -->
+        <form id="login-form" class="login-form" style="display:none" onsubmit="return handleLogin(event)">
+            <div class="input-group-custom">
+                <input type="email" id="login-email" placeholder="Email address" required>
+            </div>
+            <div class="input-group-custom">
+                <input type="password" id="login-password" placeholder="Password" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block" id="login-btn">
+                <span class="btn-text">Sign In</span>
+                <span class="btn-spinner" style="display:none"><i class="fas fa-circle-notch fa-spin"></i></span>
+            </button>
+        </form>
+
+        <div id="form-error" class="form-error" style="display:none"></div>
+
+        <div class="login-footer">
+            <i class="fas fa-code me-1"></i> by AlejandroSejas
+        </div>
+    </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" id="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+function switchTab(tab) {
+    document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+    document.getElementById('create-form').style.display = tab === 'create' ? 'block' : 'none';
+    document.getElementById('login-form').style.display = tab === 'login' ? 'block' : 'none';
+    document.getElementById('form-error').style.display = 'none';
+}
+
+function showError(msg) {
+    const el = document.getElementById('form-error');
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+
+function setLoading(btnId, loading) {
+    const btn = document.getElementById(btnId);
+    btn.querySelector('.btn-text').style.display = loading ? 'none' : 'inline';
+    btn.querySelector('.btn-spinner').style.display = loading ? 'inline' : 'none';
+    btn.disabled = loading;
+}
+
+// Fetch domains on load
+$.get('/auth/domains', function(domains) {
+    const select = document.getElementById('create-domain');
+    select.innerHTML = '';
+    domains.forEach(d => {
+        if (d.isActive) {
+            const opt = document.createElement('option');
+            opt.value = d.domain;
+            opt.textContent = d.domain;
+            select.appendChild(opt);
+        }
+    });
+}).fail(function() {
+    document.getElementById('create-domain').innerHTML = '<option value="">Failed to load</option>';
+});
+
+function handleCreate(e) {
+    e.preventDefault();
+    const username = document.getElementById('create-username').value.trim();
+    const domain = document.getElementById('create-domain').value;
+    if (!username || !domain) return;
+
+    document.getElementById('form-error').style.display = 'none';
+    setLoading('create-btn', true);
+
+    $.ajax({
+        url: '/auth/register',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ address: username + '@' + domain }),
+        success: function() { window.location.href = '/'; },
+        error: function(xhr) {
+            const data = xhr.responseJSON || {};
+            showError(data.error || 'Failed to create account');
+            setLoading('create-btn', false);
+        }
+    });
+    return false;
+}
+
+function handleLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    if (!email || !password) return;
+
+    document.getElementById('form-error').style.display = 'none';
+    setLoading('login-btn', true);
+
+    $.ajax({
+        url: '/auth/login',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ address: email, password: password }),
+        success: function() { window.location.href = '/'; },
+        error: function(xhr) {
+            const data = xhr.responseJSON || {};
+            showError(data.error || 'Login failed');
+            setLoading('login-btn', false);
+        }
+    });
+    return false;
+}
+</script>
+{% endblock %}
