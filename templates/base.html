@@ -3,26 +3,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mail.tm Web Viewer by AlejandroSejas</title>
+    <title>Mail.tm Web Viewer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    {% block head %}{% endblock %}
 </head>
-<body class="bg-light">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="/">
-                <i class="fas fa-envelope me-2"></i>Mail.tm Web Viewer by AlejandroSejas
-            </a>
-        </div>
-    </nav>
+<body>
+    {% block body %}
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="app-sidebar" id="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-icon">
+                    <i class="fas fa-paper-plane"></i>
+                </div>
+                <span class="brand-text">Mail.tm</span>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/" class="sidebar-link active">
+                    <i class="fas fa-inbox"></i>
+                    <span>Inbox</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="sidebar-footer-text">
+                    <i class="fas fa-code me-1"></i> by AlejandroSejas
+                </div>
+            </div>
+        </aside>
 
-    <div class="container my-4">
-        {% block content %}{% endblock %}
+        <!-- Main content -->
+        <main class="app-main">
+            <!-- Top bar -->
+            <header class="app-topbar">
+                <button class="btn-menu d-lg-none" id="menu-toggle" aria-label="Toggle menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="topbar-content">
+                    {% block topbar %}{% endblock %}
+                </div>
+            </header>
+
+            <div class="app-content">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
     </div>
+
+    <!-- Mobile overlay -->
+    <div class="sidebar-overlay d-lg-none" id="sidebar-overlay"></div>
+
+    <!-- Toast container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toast-container"></div>
+
+    {% endblock %}
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+    // Mobile sidebar toggle
+    const menuToggle = document.getElementById('menu-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+
+    if (menuToggle) {
+        menuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('active');
+        });
+    }
+
+    if (overlay) {
+        overlay.addEventListener('click', () => {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('active');
+        });
+    }
+
+    // Toast utility
+    function showToast(message, type = 'success') {
+        const icons = {
+            success: 'fa-check-circle',
+            error: 'fa-exclamation-circle',
+            info: 'fa-info-circle'
+        };
+        const colors = {
+            success: '#10b981',
+            error: '#ef4444',
+            info: '#6366f1'
+        };
+        const toast = document.createElement('div');
+        toast.className = 'toast align-items-center border-0 show';
+        toast.setAttribute('role', 'alert');
+        toast.style.cssText = `--toast-color: ${colors[type]}`;
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body d-flex align-items-center gap-2">
+                    <i class="fas ${icons[type]}" style="color: ${colors[type]}"></i>
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-dark me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        `;
+        document.getElementById('toast-container').appendChild(toast);
+        setTimeout(() => {
+            toast.classList.add('toast-fade-out');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+    </script>
     {% block scripts %}{% endblock %}
 </body>
-</html> 
+</html>
