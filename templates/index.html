@@ -40,7 +40,7 @@
                 <div class="message-item {% if not message.seen %}unread{% endif %}"
                      data-id="{{ message.id }}"
                      onclick="viewMessage('{{ message.id }}', this)">
-                    <div class="message-item-indicator"></div>
+                    <div class="message-avatar">{{ message.from[0].upper() }}</div>
                     <div class="message-item-content">
                         <div class="message-item-header">
                             <span class="message-sender">{{ message.from }}</span>
@@ -132,7 +132,7 @@ function refreshMessages() {
             <div class="message-item ${!message.seen ? 'unread' : ''} ${message.id === currentMessageId ? 'active' : ''}"
                  data-id="${message.id}"
                  onclick="viewMessage('${message.id}', this)">
-                <div class="message-item-indicator"></div>
+                <div class="message-avatar">${escapeHtml(message.from[0].toUpperCase())}</div>
                 <div class="message-item-content">
                     <div class="message-item-header">
                         <span class="message-sender">${escapeHtml(message.from)}</span>
