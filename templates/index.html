@@ -9,6 +9,16 @@
             <i class="fas fa-copy" id="copy-icon"></i>
         </button>
     </div>
+    <div class="password-badge" id="password-badge" title="Click to copy password">
+        <i class="fas fa-key"></i>
+        <span id="password-text" class="password-masked">••••••••</span>
+        <button class="btn-copy" onclick="togglePassword(event)">
+            <i class="fas fa-eye" id="password-eye-icon"></i>
+        </button>
+        <button class="btn-copy" onclick="copyPassword(event)">
+            <i class="fas fa-copy" id="password-copy-icon"></i>
+        </button>
+    </div>
     <div class="topbar-actions">
         <div class="auto-refresh-indicator" id="refresh-indicator" title="Auto-refresh active">
             <span class="pulse-dot"></span>
@@ -44,7 +54,7 @@
                     <div class="message-item-content">
                         <div class="message-item-header">
                             <span class="message-sender">{{ message.from }}</span>
-                            <span class="message-date">{{ message.date }}</span>
+                            <span class="message-date" data-date="{{ message.date }}"></span>
                         </div>
                         <div class="message-subject">{{ message.subject or '(No subject)' }}</div>
                         <div class="message-preview">{{ message.intro }}</div>
@@ -92,6 +102,43 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
 <script>
 let currentMessageId = null;
+let passwordVisible = false;
+
+function formatLocalDate(isoString) {
+    const d = new Date(isoString);
+    const now = new Date();
+    const isToday = d.toDateString() === now.toDateString();
+    if (isToday) {
+        return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    }
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function togglePassword(e) {
+    e.stopPropagation();
+    const textEl = document.getElementById('password-text');
+    const icon = document.getElementById('password-eye-icon');
+    passwordVisible = !passwordVisible;
+    if (passwordVisible) {
+        textEl.textContent = '{{ password }}';
+        textEl.classList.remove('password-masked');
+        icon.className = 'fas fa-eye-slash';
+    } else {
+        textEl.textContent = '••••••••';
+        textEl.classList.add('password-masked');
+        icon.className = 'fas fa-eye';
+    }
+}
+
+function copyPassword(e) {
+    e.stopPropagation();
+    navigator.clipboard.writeText('{{ password }}').then(() => {
+        showToast('Password copied!', 'success');
+        const icon = document.getElementById('password-copy-icon');
+        icon.className = 'fas fa-check';
+        setTimeout(() => { icon.className = 'fas fa-copy'; }, 1500);
+    });
+}
 
 function copyEmail(e) {
     e.stopPropagation();
@@ -136,13 +183,14 @@ function refreshMessages() {
                 <div class="message-item-content">
                     <div class="message-item-header">
                         <span class="message-sender">${escapeHtml(message.from)}</span>
-                        <span class="message-date">${message.date}</span>
+                        <span class="message-date" data-date="${message.date}"></span>
                     </div>
                     <div class="message-subject">${escapeHtml(message.subject || '(No subject)')}</div>
                     <div class="message-preview">${escapeHtml(message.intro)}</div>
                 </div>
             </div>
         `).join('');
+        convertDates();
     }).fail(function(xhr) {
         if (xhr.status === 401) window.location.href = '/login';
     }).always(function() {
@@ -269,6 +317,13 @@ function goBackToList() {
     document.getElementById('btn-back').classList.remove('visible');
 }
 
+function convertDates() {
+    document.querySelectorAll('.message-date[data-date]').forEach(el => {
+        el.textContent = formatLocalDate(el.dataset.date);
+    });
+}
+
+convertDates();
 setInterval(refreshMessages, 30000);
 </script>
 {% endblock %}
