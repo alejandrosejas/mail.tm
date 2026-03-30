@@ -16,7 +16,7 @@
     {% block body %}
     <div class="app-layout">
         <!-- Sidebar -->
-        <aside class="app-sidebar" id="sidebar">
+        <aside class="app-sidebar collapsed" id="sidebar">
             <div class="sidebar-brand">
                 <div class="brand-icon">
                     <i class="fas fa-paper-plane"></i>
@@ -31,23 +31,6 @@
             </nav>
             <div class="sidebar-footer">
                 <div class="sidebar-footer-text">
-                    <i class="fas fa-palette"></i> Themes
-                </div>
-                <div class="theme-switcher">
-                    <button class="theme-btn active" data-theme="modern" title="Modern" onclick="setTheme('modern')">
-                        <i class="fas fa-sun"></i> Modern
-                    </button>
-                    <button class="theme-btn" data-theme="dark" title="Dark" onclick="setTheme('dark')">
-                        <i class="fas fa-moon"></i> Dark
-                    </button>
-                    <button class="theme-btn" data-theme="aurora" title="Aurora" onclick="setTheme('aurora')">
-                        <i class="fas fa-wand-magic-sparkles"></i> Aurora
-                    </button>
-                    <button class="theme-btn" data-theme="minimal" title="Minimal" onclick="setTheme('minimal')">
-                        <i class="fas fa-minus"></i> Minimal
-                    </button>
-                </div>
-                <div class="sidebar-footer-text" style="margin-top: 12px;">
                     <i class="fas fa-code me-1"></i> by AlejandroSejas
                 </div>
             </div>
@@ -57,11 +40,16 @@
         <main class="app-main">
             <!-- Top bar -->
             <header class="app-topbar">
-                <button class="btn-menu d-lg-none" id="menu-toggle" aria-label="Toggle menu">
+                <button class="btn-sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar" title="Toggle sidebar">
                     <i class="fas fa-bars"></i>
                 </button>
                 <div class="topbar-content">
                     {% block topbar %}{% endblock %}
+                </div>
+                <div class="theme-toggle" id="theme-toggle" title="Toggle dark mode">
+                    <i class="fas fa-sun theme-toggle-label"></i>
+                    <button class="theme-toggle-switch" id="theme-toggle-switch" aria-label="Toggle dark mode"></button>
+                    <i class="fas fa-moon theme-toggle-label"></i>
                 </div>
             </header>
 
@@ -82,45 +70,59 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-    // Theme Management
+    // Theme Management (light/dark)
     function setTheme(theme) {
         document.documentElement.setAttribute('data-theme', theme);
         document.getElementById('app-html').setAttribute('data-theme', theme);
         localStorage.setItem('mailTmTheme', theme);
-        updateThemeButtons(theme);
     }
 
-    function updateThemeButtons(theme) {
-        document.querySelectorAll('.theme-btn').forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.getAttribute('data-theme') === theme) {
-                btn.classList.add('active');
-            }
-        });
+    function toggleTheme() {
+        const current = localStorage.getItem('mailTmTheme') || 'light';
+        setTheme(current === 'dark' ? 'light' : 'dark');
     }
 
     // Load saved theme on startup
     document.addEventListener('DOMContentLoaded', () => {
-        const saved = localStorage.getItem('mailTmTheme') || 'modern';
+        const saved = localStorage.getItem('mailTmTheme') || 'light';
         setTheme(saved);
+
+        // Sidebar: restore collapsed state (default: collapsed)
+        const sidebarCollapsed = localStorage.getItem('mailTmSidebarCollapsed');
+        if (sidebarCollapsed === 'false') {
+            document.getElementById('sidebar').classList.remove('collapsed');
+        }
     });
 
-    // Mobile sidebar toggle
-    const menuToggle = document.getElementById('menu-toggle');
+    // Theme toggle
+    const themeToggleSwitch = document.getElementById('theme-toggle-switch');
+    if (themeToggleSwitch) {
+        themeToggleSwitch.addEventListener('click', toggleTheme);
+    }
+
+    // Sidebar toggle
+    const sidebarToggle = document.getElementById('sidebar-toggle');
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebar-overlay');
 
-    if (menuToggle) {
-        menuToggle.addEventListener('click', () => {
-            sidebar.classList.toggle('open');
-            overlay.classList.toggle('active');
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('collapsed');
+            localStorage.setItem('mailTmSidebarCollapsed', sidebar.classList.contains('collapsed'));
+            // On mobile, also handle overlay
+            if (window.innerWidth < 992) {
+                sidebar.classList.toggle('open');
+                overlay.classList.toggle('active');
+            }
         });
     }
 
     if (overlay) {
         overlay.addEventListener('click', () => {
             sidebar.classList.remove('open');
+            sidebar.classList.add('collapsed');
             overlay.classList.remove('active');
+            localStorage.setItem('mailTmSidebarCollapsed', 'true');
         });
     }
 

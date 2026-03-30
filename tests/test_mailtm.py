@@ -141,7 +141,7 @@ class TestMailTMClass(unittest.TestCase):
         self.assertEqual(messages[0]['id'], 'msg-1')
         self.assertEqual(messages[0]['subject'], 'Test Subject')
         self.assertEqual(messages[0]['from'], 'sender@example.com')
-        self.assertEqual(messages[0]['date'], '2025-06-15 10:30:00')
+        self.assertEqual(messages[0]['date'], '2025-06-15T10:30:00+00:00')
         self.assertIn('Hello', messages[0]['intro'])
         self.assertFalse(messages[0]['seen'])
 
@@ -247,7 +247,7 @@ class TestFlaskRoutes(unittest.TestCase):
                 'id': 'msg-1',
                 'subject': 'Test',
                 'from': 'sender@example.com',
-                'date': '2025-06-15 10:30:00',
+                'date': '2025-06-15T10:30:00+00:00',
                 'intro': 'Hello...',
                 'seen': False
             }
@@ -337,7 +337,7 @@ class TestFlaskRoutes(unittest.TestCase):
                 'id': 'msg-1',
                 'subject': 'Test',
                 'from': 'sender@example.com',
-                'date': '2025-06-15 10:30:00',
+                'date': '2025-06-15T10:30:00+00:00',
                 'intro': 'Hello...',
                 'seen': False
             }

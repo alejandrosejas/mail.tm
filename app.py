@@ -5,7 +5,7 @@ import os
 import requests
 import secrets
 import string
-from datetime import datetime
+
 
 # Load environment variables
 load_dotenv()
@@ -76,7 +76,7 @@ class MailTM:
                 'id': msg['id'],
                 'subject': msg['subject'],
                 'from': msg['from']['address'],
-                'date': datetime.fromisoformat(msg['createdAt'].replace('Z', '+00:00')).strftime('%Y-%m-%d %H:%M:%S'),
+                'date': msg['createdAt'],
                 'intro': msg.get('text', '')[:100] + '...' if msg.get('text') else '(No preview available)',
                 'seen': msg.get('seen', False)
             })
@@ -212,7 +212,7 @@ def create_app():
         try:
             client = _get_mail_client()
             messages = client.get_messages()
-            return render_template('index.html', messages=messages, email=session.get('email'))
+            return render_template('index.html', messages=messages, email=session.get('email'), password=session.get('password', ''))
         except requests.exceptions.HTTPError as e:
             if e.response is not None and e.response.status_code == 401:
                 session.clear()
