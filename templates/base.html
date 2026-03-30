@@ -59,8 +59,8 @@
         </main>
     </div>
 
-    <!-- Mobile overlay -->
-    <div class="sidebar-overlay d-lg-none" id="sidebar-overlay"></div>
+    <!-- Sidebar overlay -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
     <!-- Toast container -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toast-container"></div>
@@ -107,12 +107,14 @@
 
     if (sidebarToggle) {
         sidebarToggle.addEventListener('click', () => {
-            sidebar.classList.toggle('collapsed');
-            localStorage.setItem('mailTmSidebarCollapsed', sidebar.classList.contains('collapsed'));
-            // On mobile, also handle overlay
             if (window.innerWidth < 992) {
+                // Mobile: use slide-in overlay pattern
                 sidebar.classList.toggle('open');
                 overlay.classList.toggle('active');
+            } else {
+                // Desktop: collapse/expand inline
+                sidebar.classList.toggle('collapsed');
+                localStorage.setItem('mailTmSidebarCollapsed', sidebar.classList.contains('collapsed'));
             }
         });
     }
@@ -120,9 +122,7 @@
     if (overlay) {
         overlay.addEventListener('click', () => {
             sidebar.classList.remove('open');
-            sidebar.classList.add('collapsed');
             overlay.classList.remove('active');
-            localStorage.setItem('mailTmSidebarCollapsed', 'true');
         });
     }
 

@@ -1203,8 +1203,9 @@ body {
     display: flex;
 }
 
-/* --- Sidebar Overlay (mobile) --- */
+/* --- Sidebar Overlay (mobile only) --- */
 .sidebar-overlay {
+    display: none;
     position: fixed;
     inset: 0;
     background: rgba(0,0,0,0.4);
@@ -1214,9 +1215,10 @@ body {
     transition: all var(--transition);
 }
 
-.sidebar-overlay.active {
-    opacity: 1;
-    visibility: visible;
+@media (max-width: 991.98px) {
+    .sidebar-overlay {
+        display: block;
+    }
 }
 
 /* --- Animations --- */
@@ -1271,11 +1273,23 @@ body {
         top: 0;
         height: 100vh;
         transform: translateX(-100%);
+        width: var(--sidebar-width);
         z-index: 100;
+    }
+
+    .app-sidebar.collapsed {
+        transform: translateX(-100%);
+        width: var(--sidebar-width);
+        border-right: 1px solid var(--color-border);
     }
 
     .app-sidebar.open {
         transform: translateX(0);
+    }
+
+    .sidebar-overlay.active {
+        opacity: 1;
+        visibility: visible;
     }
 
     .message-list-panel {
