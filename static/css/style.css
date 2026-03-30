@@ -181,9 +181,13 @@ body {
     flex-shrink: 0;
     z-index: 100;
     transition: transform var(--transition);
-    border-right: 1px solid var(--color-border);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
     position: relative;
     overflow: hidden;
+}
+
+[data-theme="minimal"] .app-sidebar {
+    border-right-color: #ddd;
 }
 
 /* Glassmorphism effect for Aurora */
@@ -224,6 +228,10 @@ body {
     letter-spacing: -0.3px;
 }
 
+[data-theme="minimal"] .brand-text {
+    color: #1a1a1a;
+}
+
 .sidebar-nav {
     flex: 1;
     padding: 0 12px;
@@ -234,12 +242,12 @@ body {
     align-items: center;
     gap: 12px;
     padding: 12px 14px;
-    border-radius: var(--radius-sm);
-    color: var(--color-text-muted);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.5);
     text-decoration: none;
     font-size: 13px;
     font-weight: 500;
-    transition: all var(--transition-fast);
+    transition: all 0.15s ease-out;
     position: relative;
     margin: 4px 0;
 }
@@ -254,16 +262,16 @@ body {
     border-radius: 0 3px 3px 0;
     background: var(--color-primary);
     opacity: 0;
-    transition: opacity var(--transition-fast);
+    transition: opacity 0.15s ease-out;
 }
 
 .sidebar-link:hover {
-    color: var(--color-primary);
+    color: white;
     background: var(--color-sidebar-hover);
 }
 
 .sidebar-link.active {
-    color: var(--color-primary);
+    color: white;
     background: var(--color-sidebar-active);
 }
 
@@ -275,26 +283,48 @@ body {
     width: 18px;
     text-align: center;
     font-size: 14px;
-    transition: transform var(--transition-fast);
+    transition: transform 0.15s ease-out;
 }
 
 .sidebar-link:hover i {
     transform: translateX(2px);
 }
 
+/* Minimal theme has light sidebar */
+[data-theme="minimal"] .sidebar-link {
+    color: #888;
+}
+
+[data-theme="minimal"] .sidebar-link:hover {
+    color: #1a1a1a;
+}
+
+[data-theme="minimal"] .sidebar-link.active {
+    color: #1a1a1a;
+}
+
 .sidebar-footer {
-    padding: 16px 20px 20px;
-    border-top: 1px solid var(--color-border);
+    padding: 16px 16px 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
     margin-top: auto;
 }
 
+[data-theme="minimal"] .sidebar-footer {
+    border-top-color: #ddd;
+}
+
 .sidebar-footer-text {
-    color: var(--color-text-muted);
+    color: rgba(255, 255, 255, 0.5);
     font-size: 11px;
-    margin-bottom: 16px;
+    font-weight: 500;
+    margin-bottom: 12px;
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
+}
+
+[data-theme="minimal"] .sidebar-footer-text {
+    color: #888;
 }
 
 /* Theme Switcher */
@@ -306,44 +336,68 @@ body {
 
 .theme-btn {
     width: 100%;
-    height: 32px;
-    border: 1.5px solid var(--color-border);
-    background: var(--color-surface-alt);
-    border-radius: var(--radius-sm);
+    height: 34px;
+    border: 1.5px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
     cursor: pointer;
     font-size: 11px;
     font-weight: 500;
-    color: var(--color-text-muted);
-    transition: all var(--transition-fast);
+    font-family: var(--font);
+    color: rgba(255, 255, 255, 0.6);
+    transition: all 0.15s ease-out;
     position: relative;
     overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.theme-btn i {
+    font-size: 10px;
 }
 
 .theme-btn:hover {
-    border-color: var(--color-primary);
-    color: var(--color-primary);
-    background: var(--color-primary-bg);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.12);
 }
 
 .theme-btn.active {
     background: var(--color-primary);
     color: white;
     border-color: var(--color-primary);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 2px 10px rgba(99, 102, 241, 0.4);
     font-weight: 600;
 }
 
 [data-theme="dark"] .theme-btn.active {
-    box-shadow: 0 4px 12px rgba(0, 217, 255, 0.3);
+    box-shadow: 0 2px 10px rgba(0, 217, 255, 0.4);
 }
 
 [data-theme="aurora"] .theme-btn.active {
-    box-shadow: 0 4px 12px rgba(167, 139, 250, 0.3);
+    box-shadow: 0 2px 10px rgba(167, 139, 250, 0.4);
+}
+
+/* Minimal theme has a light sidebar, so invert button colors */
+[data-theme="minimal"] .theme-btn {
+    border-color: #ccc;
+    background: #e8e8e8;
+    color: #666;
+}
+
+[data-theme="minimal"] .theme-btn:hover {
+    border-color: #999;
+    background: #ddd;
+    color: #333;
 }
 
 [data-theme="minimal"] .theme-btn.active {
+    background: #1a1a1a;
+    color: white;
+    border-color: #1a1a1a;
     box-shadow: none;
-    border: 1.5px solid var(--color-text);
 }
 
 /* --- Main Content --- */
