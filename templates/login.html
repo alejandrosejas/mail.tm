@@ -42,6 +42,9 @@
             <div class="input-group-custom">
                 <div class="input-row">
                     <input type="text" id="create-username" placeholder="username" autocomplete="off" required>
+                    <button type="button" class="btn-random" onclick="generateRandomUsername()" title="Generate random username">
+                        <i class="fas fa-dice"></i>
+                    </button>
                     <span class="input-at">@</span>
                     <select id="create-domain">
                         <option value="">Loading...</option>
@@ -165,6 +168,18 @@ function handleCreate(e) {
         }
     });
     return false;
+}
+
+function generateRandomUsername() {
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    const length = 8 + Math.floor(Math.random() * 5); // 8-12 chars
+    let result = '';
+    const array = new Uint32Array(length);
+    crypto.getRandomValues(array);
+    for (let i = 0; i < length; i++) {
+        result += chars[array[i] % chars.length];
+    }
+    document.getElementById('create-username').value = result;
 }
 
 function handleLogin(e) {
