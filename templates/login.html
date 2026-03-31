@@ -153,7 +153,10 @@ function handleCreate(e) {
         type: 'POST',
         contentType: 'application/json',
         data: JSON.stringify({ address: username + '@' + domain }),
-        success: function() { window.location.href = '/'; },
+        success: function() {
+            posthog.capture('account_created');
+            window.location.href = '/';
+        },
         error: function(xhr) {
             const data = xhr.responseJSON || {};
             showError(data.error || 'Failed to create account');
@@ -189,7 +192,10 @@ function handleLogin(e) {
         type: 'POST',
         contentType: 'application/json',
         data: JSON.stringify({ address: email, password: password }),
-        success: function() { window.location.href = '/'; },
+        success: function() {
+            posthog.capture('user_signed_in');
+            window.location.href = '/';
+        },
         error: function(xhr) {
             const data = xhr.responseJSON || {};
             showError(data.error || 'Login failed');
